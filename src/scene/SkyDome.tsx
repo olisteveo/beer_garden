@@ -16,16 +16,16 @@ export function SkyDome({ solar, cloudCover = 0 }: SkyDomeProps) {
 
   switch (solar.phase) {
     case "night":
-      ambientIntensity = 0.03;
-      ambientColor = "#0a0a2a";
+      ambientIntensity = 0.2;
+      ambientColor = "#1a1a3a";
       break;
     case "dawn":
     case "dusk":
-      ambientIntensity = 0.2;
+      ambientIntensity = 0.3;
       ambientColor = "#4a3a5a";
       break;
     case "golden":
-      ambientIntensity = 0.35;
+      ambientIntensity = 0.4;
       ambientColor = "#8a7060";
       break;
     case "day":

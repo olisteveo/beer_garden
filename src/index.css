@@ -15,8 +15,12 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
-  touch-action: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Let R3F Canvas handle its own touch; allow UI controls to work */
+canvas {
+  touch-action: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

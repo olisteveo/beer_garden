@@ -55,7 +55,62 @@ export interface SunIntensity {
   label: string; // "Full sun", "Partly cloudy", "Overcast", etc.
 }
 
+export type RoofShape =
+  | "flat"
+  | "gabled"
+  | "hipped"
+  | "pyramidal"
+  | "dome"
+  | "skillion"
+  | "mansard"
+  | "gambrel"
+  | "round";
+
 export interface BuildingFeature {
   coordinates: [number, number][][]; // rings of [lon, lat] pairs
-  height: number; // metres
+  height: number; // metres — total height including roof
+  roofShape: RoofShape; // default "flat"
+  roofHeight: number; // metres — height of roof portion (0 for flat)
+  minHeight: number; // metres — base elevation above ground
+  color: string | null; // OSM building:colour or null for palette
+}
+
+// ── Parks / green spaces ──────────────────────────────────────────
+
+export type ParkType =
+  | "park"
+  | "garden"
+  | "playground"
+  | "grass"
+  | "meadow"
+  | "recreation_ground"
+  | "village_green"
+  | "cemetery";
+
+export interface ParkFeature {
+  coordinates: [number, number][][]; // polygon rings [lon, lat]
+  parkType: ParkType;
+}
+
+// ── Roads ─────────────────────────────────────────────────────────
+
+export type RoadType =
+  | "motorway"
+  | "trunk"
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "residential";
+
+export interface RoadFeature {
+  coordinates: [number, number][]; // line points [lon, lat] (not rings)
+  roadType: RoadType;
+}
+
+// ── Tile data (buildings + parks + roads) ─────────────────────────
+
+export interface TileData {
+  buildings: BuildingFeature[];
+  parks: ParkFeature[];
+  roads: RoadFeature[];
 }

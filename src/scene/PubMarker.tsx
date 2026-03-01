@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Text, Billboard } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Pub, PubOpenStatus } from "../types";
 import { latLonToXZ } from "../utils/projection";
@@ -52,6 +52,8 @@ export function PubMarker({ pub, status, isNight, onSelect }: PubMarkerProps) {
     label = `${pub.name} · Closed`;
   }
 
+  const labelColor = isNight && !status.isOpen ? "#9ca3af" : "#ffffff";
+
   return (
     <group position={[x, 0, z]}>
       {/* Marker cylinder */}
@@ -88,20 +90,26 @@ export function PubMarker({ pub, status, isNight, onSelect }: PubMarkerProps) {
         </mesh>
       )}
 
-      {/* Floating label */}
-      <Billboard position={[0, 22, 0]}>
-        <Text
-          fontSize={4}
-          color={isNight && !status.isOpen ? "#9ca3af" : "#ffffff"}
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.3}
-          outlineColor="#000000"
-          maxWidth={80}
+      {/* Floating HTML label — avoids drei Text/Suspense issues */}
+      <Html
+        position={[0, 22, 0]}
+        center
+        distanceFactor={200}
+        style={{ pointerEvents: "none" }}
+      >
+        <div
+          style={{
+            color: labelColor,
+            fontSize: "14px",
+            fontWeight: 600,
+            textShadow: "0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5)",
+            whiteSpace: "nowrap",
+            userSelect: "none",
+          }}
         >
           {label}
-        </Text>
-      </Billboard>
+        </div>
+      </Html>
     </group>
   );
 }

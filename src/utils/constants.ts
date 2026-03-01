@@ -38,3 +38,29 @@ export const OSM_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 /** Minutes before closing to show "closing soon" warning */
 export const CLOSING_SOON_MINUTES = 30;
+
+// ── Map boundary & tile-based loading ─────────────────────────────
+
+/** Map bounding box — covers inner London (Wembley–Stratford, Croydon–Finchley) */
+export const MAP_BBOX: BBox = {
+  south: 51.33,
+  west: -0.35,
+  north: 51.58,
+  east: 0.05,
+};
+
+/** Tile grid size in degrees (~750m per tile) */
+export const TILE_SIZE_LAT = 0.00675;
+export const TILE_SIZE_LON = 0.0108;
+
+/** Fetch tiles within this radius of camera (metres) — 1500m covers ~13 tiles */
+export const TILE_LOAD_RADIUS = 1500;
+
+/** Dispose tiles beyond this radius (metres) */
+export const TILE_UNLOAD_RADIUS = 2200;
+
+/** Maximum number of tiles to keep loaded in memory (13 visible + buffer for smooth panning) */
+export const MAX_LOADED_TILES = 16;
+
+/** Maximum concurrent Overpass API fetches (individual tile mode) */
+export const MAX_CONCURRENT_FETCHES = 2;

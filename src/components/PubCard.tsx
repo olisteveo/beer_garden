@@ -5,6 +5,14 @@ interface PubCardProps {
   status: PubOpenStatus;
 }
 
+function openDirections(pub: Pub) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const url = isIOS
+    ? `maps://maps.apple.com/?daddr=${pub.lat},${pub.lon}&dirflg=w`
+    : `https://www.google.com/maps/dir/?api=1&destination=${pub.lat},${pub.lon}&travelmode=walking`;
+  window.open(url, "_blank");
+}
+
 export function PubCard({ pub, status }: PubCardProps) {
   return (
     <div>
@@ -39,6 +47,13 @@ export function PubCard({ pub, status }: PubCardProps) {
           </div>
         )}
       </div>
+
+      <button
+        onClick={() => openDirections(pub)}
+        className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-900 active:bg-amber-600"
+      >
+        Get Directions
+      </button>
     </div>
   );
 }

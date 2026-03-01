@@ -3,7 +3,7 @@ import * as THREE from "three";
 import thamesPath from "../data/thames-path.json";
 import { latLonToXZ } from "../utils/projection";
 
-const RIVER_HALF_WIDTH = 60; // metres
+const RIVER_HALF_WIDTH = 110; // metres — ~220m total, realistic for central London
 
 export function ThamesRiver() {
   const geometry = useMemo(() => {
@@ -37,9 +37,9 @@ export function ThamesRiver() {
       const perpX = -dz / len;
       const perpZ = dx / len;
 
-      // Left and right bank vertices
-      vertices.push(cx + perpX * RIVER_HALF_WIDTH, 0.15, cz + perpZ * RIVER_HALF_WIDTH);
-      vertices.push(cx - perpX * RIVER_HALF_WIDTH, 0.15, cz - perpZ * RIVER_HALF_WIDTH);
+      // Left and right bank vertices (y=0.05 — just above ground, below buildings)
+      vertices.push(cx + perpX * RIVER_HALF_WIDTH, 0.05, cz + perpZ * RIVER_HALF_WIDTH);
+      vertices.push(cx - perpX * RIVER_HALF_WIDTH, 0.05, cz - perpZ * RIVER_HALF_WIDTH);
     }
 
     // Build triangle indices
@@ -62,13 +62,15 @@ export function ThamesRiver() {
   if (!geometry) return null;
 
   return (
-    <mesh geometry={geometry}>
+    <mesh geometry={geometry} renderOrder={-1}>
       <meshStandardMaterial
-        color="#4a90d9"
-        transparent
-        opacity={0.7}
-        roughness={0.3}
-        metalness={0.1}
+        color="#4a7fb8"
+        roughness={0.2}
+        metalness={0.15}
+        side={THREE.DoubleSide}
+        polygonOffset
+        polygonOffsetFactor={-3}
+        polygonOffsetUnits={-3}
       />
     </mesh>
   );

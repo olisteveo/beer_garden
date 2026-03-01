@@ -16,14 +16,15 @@ import { LoadingOverlay } from "./components/LoadingOverlay";
 import { Scene } from "./scene/Scene";
 import { SunLight } from "./scene/SunLight";
 import { SkyDome } from "./scene/SkyDome";
-import { Buildings } from "./scene/Buildings";
+import { TiledScene } from "./scene/TiledScene";
+import { CameraBounds } from "./scene/CameraBounds";
 import { ThamesRiver } from "./scene/ThamesRiver";
 import { PubMarkers } from "./scene/PubMarkers";
 import { CloudLayer } from "./scene/CloudLayer";
 
 import { useSolarPosition } from "./hooks/useSolarPosition";
 import { useTimeOfDay } from "./hooks/useTimeOfDay";
-import { useOSMBuildings } from "./hooks/useOSMBuildings";
+import { useUserLocation } from "./hooks/useUserLocation";
 import { useWeather } from "./hooks/useWeather";
 import { useAnimationLoop } from "./hooks/useAnimationLoop";
 import { usePubSelection } from "./hooks/usePubSelection";
@@ -40,6 +41,9 @@ export default function App() {
   const webglSupported =
     typeof window !== "undefined" &&
     (!!window.WebGLRenderingContext || !!window.WebGL2RenderingContext);
+
+  // User location — centers map on where they are
+  const { lat: userLat, lon: userLon, loading: locationLoading } = useUserLocation();
 
   // Date/time state
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -67,9 +71,6 @@ export default function App() {
   // Weather (only fetch when viewing current time)
   const { weather } = useWeather(isCurrentTime);
   const sunIntensity = computeSunIntensity(solar, weather);
-
-  // Buildings
-  const { buildings, loading: buildingsLoading } = useOSMBuildings();
 
   // Pub selection
   const { selectedPub, selectPub, clearSelection } = usePubSelection();
@@ -157,11 +158,16 @@ export default function App() {
           </div>
         }
       >
-        <Scene>
+        <Scene
+          phase={solar.phase}
+          centerLat={userLat}
+          centerLon={userLon}
+        >
           <SunLight solar={solar} cloudCover={weather?.cloudCover} />
           <SkyDome solar={solar} cloudCover={weather?.cloudCover} />
           {weather && <CloudLayer cloudCover={weather.cloudCover} />}
-          <Buildings buildings={buildings} />
+          <TiledScene />
+          <CameraBounds />
           <ThamesRiver />
           <PubMarkers
             pubs={pubs}
@@ -171,7 +177,7 @@ export default function App() {
           />
         </Scene>
 
-        <LoadingOverlay visible={buildingsLoading} />
+        <LoadingOverlay visible={locationLoading} />
       </Layout>
 
       <BottomSheet open={selectedPub !== null} onClose={clearSelection}>

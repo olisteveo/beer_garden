@@ -28,8 +28,8 @@ export function SunLight({ solar, cloudCover = 0 }: SunLightProps) {
     // Phase-based colour
     switch (solar.phase) {
       case "night":
-        light.color.set("#1a1a3a"); // Moonlight blue
-        light.intensity = 0.05;
+        light.color.set("#4466aa"); // Moonlight blue
+        light.intensity = 0.15;
         break;
       case "dawn":
       case "dusk":
