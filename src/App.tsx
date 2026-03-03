@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { WebGLFallback } from "./components/WebGLFallback";
@@ -12,12 +12,12 @@ import { BottomSheet } from "./components/BottomSheet";
 import { PubCard } from "./components/PubCard";
 import { OpenPubsList } from "./components/OpenPubsList";
 import { LoadingOverlay } from "./components/LoadingOverlay";
+import { SearchBar } from "./components/SearchBar";
 
 import { Scene } from "./scene/Scene";
 import { SunLight } from "./scene/SunLight";
 import { SkyDome } from "./scene/SkyDome";
-import { TiledScene } from "./scene/TiledScene";
-import { CameraBounds } from "./scene/CameraBounds";
+import { AreaScene } from "./scene/AreaScene";
 import { ThamesRiver } from "./scene/ThamesRiver";
 import { PubMarkers } from "./scene/PubMarkers";
 import { CloudLayer } from "./scene/CloudLayer";
@@ -28,22 +28,46 @@ import { useUserLocation } from "./hooks/useUserLocation";
 import { useWeather } from "./hooks/useWeather";
 import { useAnimationLoop } from "./hooks/useAnimationLoop";
 import { usePubSelection } from "./hooks/usePubSelection";
-import { usePubOpenStatuses } from "./hooks/usePubOpenStatus";
+import { useAreaSearch } from "./hooks/useAreaSearch";
 import { computeSunIntensity } from "./utils/sunIntensity";
-import { getPubOpenStatus } from "./utils/pubHours";
-
-import pubsData from "./data/pubs.json";
-import type { Pub } from "./types";
-
-const pubs = pubsData as Pub[];
+import { CENTER_LAT, CENTER_LON } from "./utils/constants";
 
 export default function App() {
   const webglSupported =
     typeof window !== "undefined" &&
     (!!window.WebGLRenderingContext || !!window.WebGL2RenderingContext);
 
-  // User location — centers map on where they are
+  // User location — auto-search on first load
   const { lat: userLat, lon: userLon, loading: locationLoading } = useUserLocation();
+
+  // Area search
+  const { state: searchState, geometry, search, searchByLocation } = useAreaSearch();
+  const flySignalRef = useRef(0);
+  const [flySignal, setFlySignal] = useState(0);
+
+  // Auto-search user's geolocation on first load
+  const didAutoSearch = useRef(false);
+  useEffect(() => {
+    if (!locationLoading && !didAutoSearch.current) {
+      didAutoSearch.current = true;
+      searchByLocation(userLat, userLon);
+    }
+  }, [locationLoading, userLat, userLon, searchByLocation]);
+
+  // Trigger camera fly-to when search loads
+  useEffect(() => {
+    if (searchState.status === "loaded") {
+      flySignalRef.current += 1;
+      setFlySignal(flySignalRef.current);
+    }
+  }, [searchState.status]);
+
+  // Determine current center for solar/weather
+  const centerLat = searchState.status === "loaded" ? searchState.center.lat : CENTER_LAT;
+  const centerLon = searchState.status === "loaded" ? searchState.center.lon : CENTER_LON;
+
+  // Pubs from search
+  const pubs = searchState.status === "loaded" ? searchState.pubs : [];
 
   // Date/time state
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -51,52 +75,33 @@ export default function App() {
     () => new Date().getHours() * 60 + new Date().getMinutes(),
   );
 
-  // Build the simulated date from day + time slider
   const currentDate = useMemo(() => {
     const d = new Date(selectedDate);
     d.setHours(Math.floor(timeMinutes / 60), Math.floor(timeMinutes % 60), 0, 0);
     return d;
   }, [selectedDate, timeMinutes]);
 
-  // Is current time = now? (within 5 minutes)
   const isCurrentTime = useMemo(() => {
     const now = new Date();
     return Math.abs(currentDate.getTime() - now.getTime()) < 5 * 60 * 1000;
   }, [currentDate]);
 
-  // Solar position
-  const solar = useSolarPosition(currentDate);
+  // Solar position — uses search center coordinates
+  const solar = useSolarPosition(currentDate, centerLat, centerLon);
   const { isNight } = useTimeOfDay(solar);
 
-  // Weather (only fetch when viewing current time)
-  const { weather } = useWeather(isCurrentTime);
+  // Weather — uses search center coordinates
+  const { weather } = useWeather(isCurrentTime, centerLat, centerLon);
   const sunIntensity = computeSunIntensity(solar, weather);
 
   // Pub selection
   const { selectedPub, selectPub, clearSelection } = usePubSelection();
-  const pubStatuses = usePubOpenStatuses(pubs, currentDate);
 
-  // Open pub count for night mode
+  // Open pub count for night mode HUD
   const openPubCount = useMemo(
-    () => pubs.filter((p) => pubStatuses.get(p.id)?.isOpen).length,
-    [pubStatuses],
+    () => pubs.filter((p) => p.isOpen === true).length,
+    [pubs],
   );
-
-  // Next closing time
-  const nextClosingTime = useMemo(() => {
-    let earliest: string | null = null;
-    let earliestMin = Infinity;
-    for (const pub of pubs) {
-      const status = pubStatuses.get(pub.id);
-      if (status?.isOpen && status.minutesUntilClose !== null) {
-        if (status.minutesUntilClose < earliestMin) {
-          earliestMin = status.minutesUntilClose;
-          earliest = status.closingTime;
-        }
-      }
-    }
-    return earliest;
-  }, [pubStatuses]);
 
   // Animation loop
   const { playing, toggle: toggleAnimation } = useAnimationLoop(
@@ -111,6 +116,11 @@ export default function App() {
     ),
   );
 
+  // Loading state — show overlay during initial geo or search loading
+  const isLoading = locationLoading ||
+    searchState.status === "geocoding" ||
+    searchState.status === "loading";
+
   if (!webglSupported) {
     return <WebGLFallback />;
   }
@@ -120,11 +130,12 @@ export default function App() {
       <Layout
         topLeft={
           <div className="flex flex-col gap-2">
+            <SearchBar state={searchState} onSearch={search} />
             <SunHUD
               solar={solar}
               isNight={isNight}
               openPubCount={openPubCount}
-              nextClosingTime={nextClosingTime}
+              nextClosingTime={null}
             />
             {weather && isCurrentTime && !isNight && (
               <WeatherBadge weather={weather} />
@@ -140,10 +151,9 @@ export default function App() {
         bottom={
           <div>
             <TimeSlider value={timeMinutes} onChange={setTimeMinutes} />
-            {isNight && (
+            {isNight && pubs.length > 0 && (
               <OpenPubsList
                 pubs={pubs}
-                statuses={pubStatuses}
                 onSelectPub={selectPub}
               />
             )}
@@ -158,35 +168,26 @@ export default function App() {
           </div>
         }
       >
-        <Scene
-          phase={solar.phase}
-          centerLat={userLat}
-          centerLon={userLon}
-        >
+        <Scene phase={solar.phase} flySignal={flySignal}>
           <SunLight solar={solar} cloudCover={weather?.cloudCover} />
           <SkyDome solar={solar} cloudCover={weather?.cloudCover} />
           {weather && <CloudLayer cloudCover={weather.cloudCover} />}
-          <TiledScene />
-          <CameraBounds />
+          {geometry && <AreaScene geometry={geometry} />}
           <ThamesRiver />
-          <PubMarkers
-            pubs={pubs}
-            isNight={isNight}
-            currentDate={currentDate}
-            onSelectPub={selectPub}
-          />
+          {pubs.length > 0 && (
+            <PubMarkers
+              pubs={pubs}
+              isNight={isNight}
+              onSelectPub={selectPub}
+            />
+          )}
         </Scene>
 
-        <LoadingOverlay visible={locationLoading} />
+        <LoadingOverlay visible={isLoading} />
       </Layout>
 
       <BottomSheet open={selectedPub !== null} onClose={clearSelection}>
-        {selectedPub && (
-          <PubCard
-            pub={selectedPub}
-            status={getPubOpenStatus(selectedPub, currentDate)}
-          />
-        )}
+        {selectedPub && <PubCard pub={selectedPub} />}
       </BottomSheet>
     </ErrorBoundary>
   );

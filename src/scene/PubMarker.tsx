@@ -2,20 +2,22 @@ import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import type { Pub, PubOpenStatus } from "../types";
+import type { SearchPub } from "../types";
 import { latLonToXZ } from "../utils/projection";
 
 interface PubMarkerProps {
-  pub: Pub;
-  status: PubOpenStatus;
+  pub: SearchPub;
   isNight: boolean;
-  onSelect: (pub: Pub) => void;
+  onSelect: (pub: SearchPub) => void;
 }
 
-export function PubMarker({ pub, status, isNight, onSelect }: PubMarkerProps) {
+export function PubMarker({ pub, isNight, onSelect }: PubMarkerProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const [x, z] = latLonToXZ(pub.lat, pub.lon);
+
+  const isOpen = pub.isOpen === true;
+  const isClosed = pub.isOpen === false;
 
   // Marker appearance based on day/night and open status
   let color = "#f59e0b"; // daytime default amber
@@ -23,20 +25,25 @@ export function PubMarker({ pub, status, isNight, onSelect }: PubMarkerProps) {
   let opacity = 1;
 
   if (isNight) {
-    if (status.isOpen) {
+    if (isOpen) {
       color = "#f59e0b";
-      emissiveIntensity = status.closingSoon ? 0.3 : 0.5;
-    } else {
+      emissiveIntensity = 0.5;
+    } else if (isClosed) {
       color = "#6b7280";
       opacity = 0.5;
       emissiveIntensity = 0;
+    } else {
+      // Unknown hours — dim amber
+      color = "#d97706";
+      emissiveIntensity = 0.2;
+      opacity = 0.7;
     }
   }
 
   // Pulse effect for open pubs at night
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
-    if (isNight && status.isOpen) {
+    if (isNight && isOpen) {
       const pulse = Math.sin(clock.elapsedTime * 2) * 0.1 + 1;
       meshRef.current.scale.setScalar(pulse);
     } else {
@@ -46,17 +53,16 @@ export function PubMarker({ pub, status, isNight, onSelect }: PubMarkerProps) {
 
   // Label text
   let label = pub.name;
-  if (isNight && status.closingSoon && status.closingTime) {
-    label = `${pub.name} · Closes ${status.closingTime}`;
-  } else if (isNight && !status.isOpen) {
+  if (isNight && isClosed) {
     label = `${pub.name} · Closed`;
+  } else if (pub.outdoorSeating || pub.beerGarden) {
+    label = `${pub.name} · ☀`;
   }
 
-  const labelColor = isNight && !status.isOpen ? "#9ca3af" : "#ffffff";
+  const labelColor = isNight && isClosed ? "#9ca3af" : "#ffffff";
 
   return (
     <group position={[x, 0, z]}>
-      {/* Marker cylinder */}
       <mesh
         ref={meshRef}
         position={[0, 8, 0]}
@@ -78,19 +84,13 @@ export function PubMarker({ pub, status, isNight, onSelect }: PubMarkerProps) {
         />
       </mesh>
 
-      {/* Glow ring at base */}
-      {isNight && status.isOpen && (
+      {isNight && isOpen && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.2, 0]}>
           <ringGeometry args={[4, 6, 16]} />
-          <meshBasicMaterial
-            color="#f59e0b"
-            transparent
-            opacity={0.4}
-          />
+          <meshBasicMaterial color="#f59e0b" transparent opacity={0.4} />
         </mesh>
       )}
 
-      {/* Floating HTML label — avoids drei Text/Suspense issues */}
       <Html
         position={[0, 22, 0]}
         center

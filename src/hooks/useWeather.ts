@@ -4,7 +4,6 @@ import { fetchWeather } from "../utils/weather";
 import { cacheGet, cacheSet } from "../utils/cache";
 import { WEATHER_CACHE_TTL } from "../utils/constants";
 
-const CACHE_KEY = "beer-garden:weather";
 const REFRESH_INTERVAL = WEATHER_CACHE_TTL;
 
 interface WeatherState {
@@ -12,12 +11,19 @@ interface WeatherState {
   loading: boolean;
 }
 
-export function useWeather(enabled: boolean): WeatherState {
+export function useWeather(
+  enabled: boolean,
+  lat: number,
+  lon: number,
+): WeatherState {
   const [state, setState] = useState<WeatherState>({
     weather: null,
     loading: false,
   });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cache key includes rounded coordinates so weather updates on search
+  const cacheKey = `beer-garden:weather:${lat.toFixed(2)}:${lon.toFixed(2)}`;
 
   useEffect(() => {
     if (!enabled) {
@@ -28,24 +34,22 @@ export function useWeather(enabled: boolean): WeatherState {
     const controller = new AbortController();
 
     async function load() {
-      // Try cache
-      const cached = cacheGet<WeatherData>(CACHE_KEY, WEATHER_CACHE_TTL);
+      const cached = cacheGet<WeatherData>(cacheKey, WEATHER_CACHE_TTL);
       if (cached) {
         setState({ weather: cached, loading: false });
         return;
       }
 
       setState((prev) => ({ ...prev, loading: true }));
-      const data = await fetchWeather(controller.signal);
+      const data = await fetchWeather(lat, lon, controller.signal);
       if (!controller.signal.aborted) {
-        if (data) cacheSet(CACHE_KEY, data);
+        if (data) cacheSet(cacheKey, data);
         setState({ weather: data, loading: false });
       }
     }
 
     void load();
 
-    // Refresh on interval
     intervalRef.current = setInterval(() => {
       void load();
     }, REFRESH_INTERVAL);
@@ -54,7 +58,7 @@ export function useWeather(enabled: boolean): WeatherState {
       controller.abort();
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [enabled]);
+  }, [enabled, lat, lon, cacheKey]);
 
   return state;
 }

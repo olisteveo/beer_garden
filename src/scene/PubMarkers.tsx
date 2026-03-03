@@ -1,18 +1,15 @@
-import type { Pub } from "../types";
-import { getPubOpenStatus } from "../utils/pubHours";
+import type { SearchPub } from "../types";
 import { PubMarker } from "./PubMarker";
 
 interface PubMarkersProps {
-  pubs: Pub[];
+  pubs: SearchPub[];
   isNight: boolean;
-  currentDate: Date;
-  onSelectPub: (pub: Pub) => void;
+  onSelectPub: (pub: SearchPub) => void;
 }
 
 export function PubMarkers({
   pubs,
   isNight,
-  currentDate,
   onSelectPub,
 }: PubMarkersProps) {
   return (
@@ -21,7 +18,6 @@ export function PubMarkers({
         <PubMarker
           key={pub.id}
           pub={pub}
-          status={getPubOpenStatus(pub, currentDate)}
           isNight={isNight}
           onSelect={onSelectPub}
         />

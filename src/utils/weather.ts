@@ -1,14 +1,15 @@
 import type { WeatherData } from "../types";
 import { isWeatherResponse, isNumber } from "./validation";
-import { CENTER_LAT, CENTER_LON } from "./constants";
 
 const OWM_BASE = "https://api.openweathermap.org/data/2.5/weather";
 
 /**
- * Fetch current weather data from OpenWeatherMap.
+ * Fetch current weather data from OpenWeatherMap for a given location.
  * Returns null if API key is missing or request fails.
  */
 export async function fetchWeather(
+  lat: number,
+  lon: number,
   signal?: AbortSignal,
 ): Promise<WeatherData | null> {
   const apiKey = import.meta.env.VITE_OWM_API_KEY;
@@ -16,7 +17,7 @@ export async function fetchWeather(
     return null;
   }
 
-  const url = `${OWM_BASE}?lat=${CENTER_LAT}&lon=${CENTER_LON}&units=metric&appid=${apiKey}`;
+  const url = `${OWM_BASE}?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
 
   const response = await fetch(url, { signal });
 
@@ -51,11 +52,10 @@ export async function fetchWeather(
 
 /**
  * Rough UV estimate when the API doesn't provide it.
- * Based on typical London values.
+ * Based on typical UK values.
  */
 function estimateUVIndex(): number {
   const month = new Date().getMonth();
-  // Very rough London UV by month: [Jan..Dec]
   const monthlyUV = [1, 1, 2, 3, 5, 6, 6, 5, 4, 2, 1, 1];
   return monthlyUV[month] ?? 3;
 }

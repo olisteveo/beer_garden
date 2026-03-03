@@ -1,5 +1,4 @@
 import SunCalc from "suncalc";
-import { CENTER_LAT, CENTER_LON } from "./constants";
 import type { SolarPosition, SunPhase } from "../types";
 
 const RAD_TO_DEG = 180 / Math.PI;
@@ -25,10 +24,10 @@ function toGeographicAzimuth(azimuthRad: number): number {
 }
 
 /**
- * Get solar position for a given date at London center.
+ * Get solar position for a given date at a specific location.
  */
-export function getSolarPosition(date: Date): SolarPosition {
-  const pos = SunCalc.getPosition(date, CENTER_LAT, CENTER_LON);
+export function getSolarPosition(date: Date, lat: number, lon: number): SolarPosition {
+  const pos = SunCalc.getPosition(date, lat, lon);
   const altitudeDeg = pos.altitude * RAD_TO_DEG;
   const azimuthDeg = toGeographicAzimuth(pos.azimuth);
 

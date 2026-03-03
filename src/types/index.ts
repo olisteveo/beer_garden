@@ -107,10 +107,49 @@ export interface RoadFeature {
   roadType: RoadType;
 }
 
-// ── Tile data (buildings + parks + roads) ─────────────────────────
+// ── Area data (buildings + parks + roads + pubs) ─────────────────
 
-export interface TileData {
+export interface AreaData {
   buildings: BuildingFeature[];
   parks: ParkFeature[];
   roads: RoadFeature[];
+  pubs: OSMPubNode[];
 }
+
+// ── OSM pub data ─────────────────────────────────────────────────
+
+export interface OSMPubNode {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  openingHoursRaw: string | null;
+  outdoorSeating: boolean;
+  beerGarden: boolean;
+}
+
+export interface SearchPub extends OSMPubNode {
+  /** Display-ready open status text: "Open", "Closed", or "Hours unknown" */
+  openStatusLabel: string;
+  isOpen: boolean | null; // null = unknown
+}
+
+// ── Geocode result ───────────────────────────────────────────────
+
+export interface GeocodeResult {
+  lat: number;
+  lon: number;
+  displayName: string;
+}
+
+// ── Search state machine ─────────────────────────────────────────
+
+export type SearchState =
+  | { status: "idle" }
+  | { status: "geocoding" }
+  | { status: "loading"; displayName: string }
+  | { status: "loaded"; displayName: string; center: { lat: number; lon: number }; pubs: SearchPub[] }
+  | { status: "error"; message: string };

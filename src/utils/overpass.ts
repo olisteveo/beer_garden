@@ -1,6 +1,6 @@
 import osmtogeojson from "osmtogeojson";
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from "geojson";
-import type { BBox, BuildingFeature, RoofShape, ParkFeature, ParkType, RoadFeature, RoadType, TileData } from "../types";
+import type { BBox, BuildingFeature, RoofShape, ParkFeature, ParkType, RoadFeature, RoadType, AreaData, OSMPubNode } from "../types";
 import { DEFAULT_BUILDING_HEIGHT, METRES_PER_LEVEL } from "./constants";
 import { isOverpassResponse, isNumber, isString } from "./validation";
 import thamesPath from "../data/thames-path.json";
@@ -69,7 +69,7 @@ function buildQuery(bbox: BBox): string {
   const { south, west, north, east } = bbox;
   const b = `${south},${west},${north},${east}`;
   return (
-    `[out:json][timeout:25];(` +
+    `[out:json][timeout:30];(` +
     `way["building"](${b});` +
     `relation["building"](${b});` +
     `way["building:part"](${b});` +
@@ -79,6 +79,7 @@ function buildQuery(bbox: BBox): string {
     `way["landuse"~"grass|meadow|recreation_ground|village_green|cemetery"](${b});` +
     `relation["landuse"~"grass|meadow|recreation_ground|village_green|cemetery"](${b});` +
     `way["highway"~"motorway|trunk|primary|secondary|tertiary|residential"](${b});` +
+    `node["amenity"~"pub|bar"](${b});` +
     `);out body;>;out skel qt;`
   );
 }
@@ -378,16 +379,48 @@ function getTags(properties: Record<string, unknown>): Record<string, unknown> {
   return properties;
 }
 
+// ── Pub node extraction ──────────────────────────────────────────────
+
+function extractPubNode(
+  properties: Record<string, unknown>,
+  lat: number,
+  lon: number,
+): OSMPubNode | null {
+  const tags = getTags(properties);
+  const name = isString(tags["name"]) ? tags["name"] : null;
+  if (!name) return null; // skip unnamed pubs
+
+  const id = isString(properties["id"]) ? properties["id"] : `${lat}:${lon}`;
+
+  const addrParts: string[] = [];
+  if (isString(tags["addr:housenumber"])) addrParts.push(tags["addr:housenumber"]);
+  if (isString(tags["addr:street"])) addrParts.push(tags["addr:street"]);
+  if (isString(tags["addr:postcode"])) addrParts.push(tags["addr:postcode"]);
+
+  return {
+    id,
+    name,
+    lat,
+    lon,
+    address: addrParts.length > 0 ? addrParts.join(", ") : null,
+    phone: isString(tags["phone"]) ? tags["phone"] : (isString(tags["contact:phone"]) ? tags["contact:phone"] : null),
+    website: isString(tags["website"]) ? tags["website"] : (isString(tags["contact:website"]) ? tags["contact:website"] : null),
+    openingHoursRaw: isString(tags["opening_hours"]) ? tags["opening_hours"] : null,
+    outdoorSeating: tags["outdoor_seating"] === "yes",
+    beerGarden: tags["beer_garden"] === "yes",
+  };
+}
+
 // ── Main fetch function ─────────────────────────────────────────────
 
 /**
- * Fetch building, park, and road data from the Overpass API for the given bounding box.
- * Returns all three types in a single response from one API call.
+ * Fetch building, park, road, and pub data from the Overpass API for the given bounding box.
+ * Returns all types in a single response from one API call.
  */
-export async function fetchTileData(
+export async function fetchAreaData(
   bbox: BBox,
   signal?: AbortSignal,
-): Promise<TileData> {
+): Promise<AreaData> {
   const query = buildQuery(bbox);
 
   const response = await fetch(OVERPASS_URL, {
@@ -414,13 +447,25 @@ export async function fetchTileData(
   const parts: ParsedFeature[] = [];
   const parks: ParkFeature[] = [];
   const roads: RoadFeature[] = [];
+  const pubs: OSMPubNode[] = [];
 
   for (const feature of geojson.features) {
     const geomType = feature.geometry.type;
     const properties = (feature.properties ?? {}) as Record<string, unknown>;
     const tags = getTags(properties);
 
-    // Check for roads first (LineString only)
+    // Check for pub/bar Point nodes
+    if (geomType === "Point") {
+      const amenity = isString(tags["amenity"]) ? tags["amenity"] : null;
+      if (amenity === "pub" || amenity === "bar") {
+        const [lon, lat] = (feature.geometry as unknown as { coordinates: [number, number] }).coordinates;
+        const pub = extractPubNode(properties, lat, lon);
+        if (pub) pubs.push(pub);
+      }
+      continue;
+    }
+
+    // Check for roads (LineString only)
     if (geomType === "LineString") {
       const roadType = detectRoadType(tags);
       if (roadType) {
@@ -507,5 +552,5 @@ export async function fetchTileData(
     }
   }
 
-  return { buildings, parks, roads };
+  return { buildings, parks, roads, pubs };
 }

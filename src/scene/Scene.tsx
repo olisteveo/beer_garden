@@ -1,18 +1,17 @@
 import { useEffect, useRef } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { ReactNode } from "react";
 import type { SunPhase } from "../types";
 import { GroundPlane } from "./GroundPlane";
 import { ShadowPlane } from "./ShadowPlane";
-import { latLonToXZ } from "../utils/projection";
 
 interface SceneProps {
   children?: ReactNode;
   phase?: SunPhase;
-  centerLat: number;
-  centerLon: number;
+  /** Increment to trigger camera fly-to center animation */
+  flySignal?: number;
 }
 
 function getFogColor(phase: SunPhase): string {
@@ -29,7 +28,6 @@ function getFogColor(phase: SunPhase): string {
   }
 }
 
-/** Sets scene background to match fog color */
 function SceneBackground({ fogColor }: { fogColor: string }) {
   const { scene } = useThree();
 
@@ -41,59 +39,71 @@ function SceneBackground({ fogColor }: { fogColor: string }) {
 }
 
 /**
- * Imperatively repositions camera + controls when the target lat/lon changes.
- * Ignores the initial render (Canvas mount already handles that).
+ * After each search, projection is re-centered so target is always [0,0,0].
+ * This component triggers an animated fly-to on a "fly" signal.
  */
-function CameraPositioner({ lat, lon }: { lat: number; lon: number }) {
+function CameraFlyTo({ fly }: { fly: number }) {
   const { camera, controls } = useThree();
-  const prevRef = useRef<{ lat: number; lon: number } | null>(null);
+  const animatingRef = useRef(false);
+  const progressRef = useRef(0);
+  const prevFlyRef = useRef(fly);
+
+  // Camera resting position relative to projection center
+  const targetPos = useRef(new THREE.Vector3(100, 400, 350));
+  const targetLook = useRef(new THREE.Vector3(0, 0, 0));
 
   useEffect(() => {
-    // Skip first render — Canvas mount already set the camera position
-    if (prevRef.current === null) {
-      prevRef.current = { lat, lon };
-      return;
+    if (fly !== prevFlyRef.current) {
+      prevFlyRef.current = fly;
+      animatingRef.current = true;
+      progressRef.current = 0;
     }
+  }, [fly]);
 
-    // Only reposition if lat/lon actually changed (geolocation resolved)
-    if (lat === prevRef.current.lat && lon === prevRef.current.lon) return;
-    prevRef.current = { lat, lon };
+  useFrame((_, delta) => {
+    if (!animatingRef.current) return;
 
-    const [x, z] = latLonToXZ(lat, lon);
+    progressRef.current = Math.min(1, progressRef.current + delta * 1.5);
+    const t = easeOutCubic(progressRef.current);
 
-    // Map-like camera: overhead with slight tilt
-    camera.position.set(x + 100, 400, z + 350);
+    camera.position.lerp(targetPos.current, t);
 
     const ctrl = controls as unknown as {
       target?: THREE.Vector3;
       update?: () => void;
     };
     if (ctrl?.target) {
-      ctrl.target.set(x, 0, z);
+      ctrl.target.lerp(targetLook.current, t);
       ctrl.update?.();
     }
-  }, [lat, lon, camera, controls]);
+
+    if (progressRef.current >= 1) {
+      animatingRef.current = false;
+    }
+  });
 
   return null;
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+// Default camera position — overhead with slight tilt, looking at origin
+const CAMERA_POS: [number, number, number] = [100, 400, 350];
+const CAMERA_TARGET: [number, number, number] = [0, 0, 0];
+
 export function Scene({
   children,
   phase = "day",
-  centerLat,
-  centerLon,
+  flySignal = 0,
 }: SceneProps) {
   const fogColor = getFogColor(phase);
-
-  // Compute camera position from lat/lon (applied on Canvas mount)
-  const [x, z] = latLonToXZ(centerLat, centerLon);
-  const cameraPos: [number, number, number] = [x + 100, 400, z + 350];
-  const target: [number, number, number] = [x, 0, z];
 
   return (
     <Canvas
       camera={{
-        position: cameraPos,
+        position: CAMERA_POS,
         fov: 45,
         near: 1,
         far: 6000,
@@ -108,7 +118,7 @@ export function Scene({
 
       <MapControls
         makeDefault
-        target={target}
+        target={CAMERA_TARGET}
         maxPolarAngle={Math.PI / 2.1}
         minDistance={50}
         maxDistance={1200}
@@ -117,7 +127,7 @@ export function Scene({
         panSpeed={1.5}
       />
 
-      <CameraPositioner lat={centerLat} lon={centerLon} />
+      <CameraFlyTo fly={flySignal} />
 
       <GroundPlane phase={phase} />
       <ShadowPlane />
