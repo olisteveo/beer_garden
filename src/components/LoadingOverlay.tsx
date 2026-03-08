@@ -5,7 +5,7 @@ interface LoadingOverlayProps {
 
 export function LoadingOverlay({
   visible,
-  message = "Loading London...",
+  message = "Loading map...",
 }: LoadingOverlayProps) {
   if (!visible) return null;
 

@@ -10,26 +10,26 @@ interface SkyDomeProps {
 export function SkyDome({ solar, cloudCover = 0 }: SkyDomeProps) {
   const sunPos = sunPositionToVector3(solar.altitude, solar.azimuth);
 
-  // Ambient intensity varies by phase
+  // Ambient intensity varies by phase — boosted for surface detail visibility
   let ambientIntensity: number;
   let ambientColor: string;
 
   switch (solar.phase) {
     case "night":
-      ambientIntensity = 0.2;
+      ambientIntensity = 0.25;
       ambientColor = "#1a1a3a";
       break;
     case "dawn":
     case "dusk":
-      ambientIntensity = 0.3;
-      ambientColor = "#4a3a5a";
+      ambientIntensity = 0.5;
+      ambientColor = "#6a4a5a";
       break;
     case "golden":
-      ambientIntensity = 0.4;
-      ambientColor = "#8a7060";
+      ambientIntensity = 0.6;
+      ambientColor = "#a08060";
       break;
     case "day":
-      ambientIntensity = 0.5;
+      ambientIntensity = 0.7;
       ambientColor = "#87ceeb";
       break;
   }

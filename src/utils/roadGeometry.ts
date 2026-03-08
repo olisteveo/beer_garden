@@ -12,24 +12,24 @@ export interface MergedRoads {
 /** Road Y position — below parks (0.02), above ground (-0.1) */
 const ROAD_Y = 0.01;
 
-/** Half-widths by road type (metres) */
+/** Half-widths by road type (metres) — slightly wider for visibility */
 const ROAD_HALF_WIDTHS: Record<RoadType, number> = {
-  motorway: 4,
-  trunk: 4,
-  primary: 2.5,
-  secondary: 2,
-  tertiary: 1.5,
-  residential: 1.5,
+  motorway: 5.5,
+  trunk: 5,
+  primary: 3.5,
+  secondary: 2.5,
+  tertiary: 2,
+  residential: 1.8,
 };
 
-/** Colors by road type — lighter tones to contrast with ground */
+/** Colors by road type — distinct mid-grey tones that stand out from ground */
 const ROAD_COLORS: Record<RoadType, THREE.Color> = {
-  motorway: new THREE.Color("#d0d0d0"),
-  trunk: new THREE.Color("#d0d0d0"),
-  primary: new THREE.Color("#c8c0b0"),
-  secondary: new THREE.Color("#bfb8a8"),
-  tertiary: new THREE.Color("#bfb8a8"),
-  residential: new THREE.Color("#bfb8a8"),
+  motorway: new THREE.Color("#a8a8a8"),
+  trunk: new THREE.Color("#a8a8a8"),
+  primary: new THREE.Color("#9a9590"),
+  secondary: new THREE.Color("#908880"),
+  tertiary: new THREE.Color("#908880"),
+  residential: new THREE.Color("#958e86"),
 };
 
 /**

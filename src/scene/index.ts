@@ -7,4 +7,8 @@ export { AreaScene } from "./AreaScene";
 export { ThamesRiver } from "./ThamesRiver";
 export { PubMarkers } from "./PubMarkers";
 export { CloudLayer } from "./CloudLayer";
+export { RainEffect } from "./RainEffect";
+export { BoundaryRing } from "./BoundaryRing";
 export { PubMarker } from "./PubMarker";
+export { PostProcessing } from "./PostProcessing";
+export { NightWindows } from "./NightWindows";

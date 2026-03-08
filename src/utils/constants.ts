@@ -23,9 +23,6 @@ export const MAX_DPR = 2;
 /** Weather cache TTL in milliseconds (5 minutes) */
 export const WEATHER_CACHE_TTL = 5 * 60 * 1000;
 
-/** OSM building cache TTL in milliseconds (24 hours) */
-export const OSM_CACHE_TTL = 24 * 60 * 60 * 1000;
-
 /** Minutes before closing to show "closing soon" warning */
 export const CLOSING_SOON_MINUTES = 30;
 
@@ -33,9 +30,3 @@ export const CLOSING_SOON_MINUTES = 30;
 
 /** Radius around search center to fetch data (metres) */
 export const SEARCH_RADIUS_M = 800;
-
-/** Nominatim geocoding endpoint */
-export const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-
-/** Area cache TTL in milliseconds (24 hours) */
-export const AREA_CACHE_TTL = 24 * 60 * 60 * 1000;

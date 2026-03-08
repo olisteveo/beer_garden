@@ -17,10 +17,10 @@ export default defineConfig({
         "pwa-512x512.png",
       ],
       manifest: {
-        name: "Beer Garden",
-        short_name: "Beer Garden",
+        name: "Pub Garden",
+        short_name: "Pub Garden",
         description:
-          "Find the sunniest pub gardens in London with real-time solar tracking",
+          "Find the sunniest pub gardens with real-time solar tracking",
         theme_color: "#f59e0b",
         background_color: "#0f172a",
         display: "standalone",
@@ -42,25 +42,23 @@ export default defineConfig({
       workbox: {
         runtimeCaching: [
           {
-            urlPattern:
-              /^https:\/\/overpass-api\.de\/api\/interpreter/,
+            urlPattern: /\/api\/search/,
             handler: "CacheFirst",
             options: {
-              cacheName: "osm-buildings",
+              cacheName: "api-search",
               expiration: {
-                maxEntries: 10,
+                maxEntries: 20,
                 maxAgeSeconds: 60 * 60 * 24, // 24 hours
               },
             },
           },
           {
-            urlPattern:
-              /^https:\/\/api\.openweathermap\.org/,
+            urlPattern: /\/api\/weather/,
             handler: "NetworkFirst",
             options: {
-              cacheName: "weather-data",
+              cacheName: "api-weather",
               expiration: {
-                maxEntries: 5,
+                maxEntries: 10,
                 maxAgeSeconds: 60 * 5, // 5 minutes
               },
             },
@@ -72,6 +70,14 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
     },
   },
 });

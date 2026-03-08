@@ -14,8 +14,14 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollable pages (landing, settings, account) get natural overflow.
+   MapPage applies overflow:hidden on its own root div. */
+body {
+  background-color: #0f172a; /* slate-900 */
+  color: #fff;
 }
 
 /* Let R3F Canvas handle its own touch; allow UI controls to work */

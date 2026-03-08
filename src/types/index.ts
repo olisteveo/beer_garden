@@ -44,15 +44,36 @@ export interface WeatherData {
   condition: string; // "Clear", "Clouds", "Rain", etc.
   conditionId: number; // OWM condition code
   temperature: number; // Celsius
+  feelsLike: number; // Celsius
   uvIndex: number; // 0-11+
   humidity: number;
   windSpeed: number; // m/s
+  rainVolume: number; // mm in last 1h (0 if no rain)
   icon: string; // OWM icon code e.g. "01d"
 }
 
 export interface SunIntensity {
   score: number; // 0-100
   label: string; // "Full sun", "Partly cloudy", "Overcast", etc.
+}
+
+export interface ForecastEntry {
+  dt: number; // Unix timestamp (seconds)
+  temperature: number;
+  feelsLike: number;
+  cloudCover: number;
+  condition: string;
+  conditionId: number;
+  humidity: number;
+  windSpeed: number;
+  pop: number; // probability of precipitation 0-1
+  rainVolume: number; // mm in 3h
+  icon: string;
+}
+
+export interface ForecastData {
+  entries: ForecastEntry[];
+  current: WeatherData;
 }
 
 export type RoofShape =
@@ -85,7 +106,8 @@ export type ParkType =
   | "meadow"
   | "recreation_ground"
   | "village_green"
-  | "cemetery";
+  | "cemetery"
+  | "beer_garden";
 
 export interface ParkFeature {
   coordinates: [number, number][][]; // polygon rings [lon, lat]
@@ -151,5 +173,5 @@ export type SearchState =
   | { status: "idle" }
   | { status: "geocoding" }
   | { status: "loading"; displayName: string }
-  | { status: "loaded"; displayName: string; center: { lat: number; lon: number }; pubs: SearchPub[] }
+  | { status: "loaded"; displayName: string; center: { lat: number; lon: number }; pubs: SearchPub[]; radius: number }
   | { status: "error"; message: string };

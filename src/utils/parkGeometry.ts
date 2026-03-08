@@ -12,16 +12,17 @@ export interface MergedParks {
 /** Park Y position — above ground (-0.1), below Thames (0.05) */
 const PARK_Y = 0.02;
 
-/** Colors by park type — vivid greens to stand out against ground */
+/** Colors by park type — rich saturated greens for vibrancy */
 const PARK_COLORS: Record<ParkType, THREE.Color> = {
-  park: new THREE.Color("#4a8c3f"),
-  garden: new THREE.Color("#4a8c3f"),
-  playground: new THREE.Color("#5ea84e"),
-  grass: new THREE.Color("#5c9e48"),
-  meadow: new THREE.Color("#5c9e48"),
-  recreation_ground: new THREE.Color("#4f8a42"),
-  village_green: new THREE.Color("#5c9e48"),
-  cemetery: new THREE.Color("#5a7a52"),
+  park: new THREE.Color("#3d9935"),
+  garden: new THREE.Color("#3d9935"),
+  playground: new THREE.Color("#52b848"),
+  grass: new THREE.Color("#4aaa3e"),
+  meadow: new THREE.Color("#4aaa3e"),
+  recreation_ground: new THREE.Color("#429538"),
+  village_green: new THREE.Color("#4aaa3e"),
+  cemetery: new THREE.Color("#4a8848"),
+  beer_garden: new THREE.Color("#2dd4bf"), // Teal — distinct from regular parks
 };
 
 /**

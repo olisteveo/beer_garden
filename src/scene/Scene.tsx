@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -6,10 +6,13 @@ import type { ReactNode } from "react";
 import type { SunPhase } from "../types";
 import { GroundPlane } from "./GroundPlane";
 import { ShadowPlane } from "./ShadowPlane";
+import { BoundaryRing } from "./BoundaryRing";
+import { PostProcessing } from "./PostProcessing";
 
 interface SceneProps {
   children?: ReactNode;
   phase?: SunPhase;
+  radius?: number;
   /** Increment to trigger camera fly-to center animation */
   flySignal?: number;
 }
@@ -39,17 +42,55 @@ function SceneBackground({ fogColor }: { fogColor: string }) {
 }
 
 /**
+ * Clamp the MapControls target so it stays within the loaded area.
+ * Smooth clamping prevents jarring snaps.
+ */
+function CameraClamp({ radius }: { radius: number }) {
+  const { controls } = useThree();
+  const clampRadius = radius * 0.55;
+
+  useFrame(() => {
+    const ctrl = controls as unknown as {
+      target?: THREE.Vector3;
+      update?: () => void;
+    };
+    if (!ctrl?.target) return;
+
+    const dist = Math.sqrt(
+      ctrl.target.x * ctrl.target.x + ctrl.target.z * ctrl.target.z,
+    );
+
+    if (dist > clampRadius) {
+      const scale = clampRadius / dist;
+      ctrl.target.x *= scale;
+      ctrl.target.z *= scale;
+      ctrl.update?.();
+    }
+  });
+
+  return null;
+}
+
+/**
  * After each search, projection is re-centered so target is always [0,0,0].
  * This component triggers an animated fly-to on a "fly" signal.
  */
-function CameraFlyTo({ fly }: { fly: number }) {
+function CameraFlyTo({ fly, radius }: { fly: number; radius: number }) {
   const { camera, controls } = useThree();
   const animatingRef = useRef(false);
   const progressRef = useRef(0);
   const prevFlyRef = useRef(fly);
 
-  // Camera resting position relative to projection center
-  const targetPos = useRef(new THREE.Vector3(100, 400, 350));
+  // Camera resting position scaled to radius
+  const targetPos = useMemo(
+    () =>
+      new THREE.Vector3(
+        radius * 0.12,
+        radius * 0.5,
+        radius * 0.44,
+      ),
+    [radius],
+  );
   const targetLook = useRef(new THREE.Vector3(0, 0, 0));
 
   useEffect(() => {
@@ -66,7 +107,7 @@ function CameraFlyTo({ fly }: { fly: number }) {
     progressRef.current = Math.min(1, progressRef.current + delta * 1.5);
     const t = easeOutCubic(progressRef.current);
 
-    camera.position.lerp(targetPos.current, t);
+    camera.position.lerp(targetPos, t);
 
     const ctrl = controls as unknown as {
       target?: THREE.Vector3;
@@ -96,9 +137,17 @@ const CAMERA_TARGET: [number, number, number] = [0, 0, 0];
 export function Scene({
   children,
   phase = "day",
+  radius = 800,
   flySignal = 0,
 }: SceneProps) {
   const fogColor = getFogColor(phase);
+
+  // Scale fog to radius — tight so boundary edge dissolves into background
+  const fogNear = radius * 0.5;
+  const fogFar = radius * 1.4;
+
+  // Scale max camera distance — keep camera close so void is never visible
+  const maxDistance = Math.max(radius * 0.9, 400);
 
   return (
     <Canvas
@@ -106,33 +155,37 @@ export function Scene({
         position: CAMERA_POS,
         fov: 45,
         near: 1,
-        far: 6000,
+        far: Math.max(6000, radius * 6),
       }}
       shadows
       dpr={[1, 2]}
-      gl={{ antialias: true }}
+      gl={{ antialias: true, toneMapping: THREE.NoToneMapping }}
     >
       <SceneBackground fogColor={fogColor} />
 
-      <fog attach="fog" args={[fogColor, 600, 2800]} />
+      <fog attach="fog" args={[fogColor, fogNear, fogFar]} />
 
       <MapControls
         makeDefault
         target={CAMERA_TARGET}
         maxPolarAngle={Math.PI / 2.1}
         minDistance={50}
-        maxDistance={1200}
+        maxDistance={maxDistance}
         enableDamping
         dampingFactor={0.05}
         panSpeed={1.5}
       />
 
-      <CameraFlyTo fly={flySignal} />
+      <CameraFlyTo fly={flySignal} radius={radius} />
+      <CameraClamp radius={radius} />
 
-      <GroundPlane phase={phase} />
-      <ShadowPlane />
+      <GroundPlane phase={phase} radius={radius} />
+      <ShadowPlane radius={radius} />
+      <BoundaryRing radius={radius} phase={phase} />
 
       {children}
+
+      <PostProcessing phase={phase} />
     </Canvas>
   );
 }

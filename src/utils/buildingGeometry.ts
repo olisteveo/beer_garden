@@ -56,15 +56,27 @@ export function buildingsToBoxes(buildings: BuildingFeature[]): BuildingBox[] {
 
 // ── Geometry helpers ────────────────────────────────────────────────
 
-/** Warm stone colour palette for per-building variation */
+/** Extended London building colour palette — warm stone, brick, render, concrete */
 const BUILDING_COLORS = [
+  // Warm stone / Portland stone
   new THREE.Color("#c8c0b4"),
-  new THREE.Color("#cec6ba"),
-  new THREE.Color("#d4cec2"),
   new THREE.Color("#d0c8bc"),
   new THREE.Color("#ddd6cc"),
-  new THREE.Color("#c4bcb0"),
-  new THREE.Color("#d8d0c6"),
+  // London brick — warmer red-brown tones
+  new THREE.Color("#b8a090"),
+  new THREE.Color("#c4a898"),
+  new THREE.Color("#a89080"),
+  // Pale render / stucco
+  new THREE.Color("#d8d4cc"),
+  new THREE.Color("#e0dcd4"),
+  new THREE.Color("#cec8be"),
+  // Concrete / brutalist grey
+  new THREE.Color("#b0b0ac"),
+  new THREE.Color("#a8a8a4"),
+  new THREE.Color("#bab8b2"),
+  // Dark slate / Victorian
+  new THREE.Color("#8a8680"),
+  new THREE.Color("#96908a"),
 ];
 
 /** Convert shape-space point (x, -z) back to world (x, z) */
@@ -700,10 +712,43 @@ export function buildMergedGeometry(
         hsl.s = Math.min(hsl.s, 0.15); // cap saturation
         color.setHSL(hsl.h, hsl.s, hsl.l);
       } else {
-        color = BUILDING_COLORS[i % BUILDING_COLORS.length]!;
+        color = BUILDING_COLORS[i % BUILDING_COLORS.length]!.clone();
       }
     } else {
-      color = BUILDING_COLORS[i % BUILDING_COLORS.length]!;
+      color = BUILDING_COLORS[i % BUILDING_COLORS.length]!.clone();
+    }
+
+    // Height-based colour variation: taller = cooler/more glass-like
+    const ht = building.height;
+    if (ht > 50) {
+      // Skyscrapers: strong blue/steel shift, lighter, glassy
+      const hsl = { h: 0, s: 0, l: 0 };
+      color.getHSL(hsl);
+      hsl.h = hsl.h * 0.6 + 0.58 * 0.4; // strong blue shift
+      hsl.s = Math.min(hsl.s + 0.08, 0.25);
+      hsl.l = Math.min(hsl.l + 0.08, 0.88);
+      color.setHSL(hsl.h, hsl.s, hsl.l);
+    } else if (ht > 30) {
+      // Tall buildings: moderate blue shift
+      const hsl = { h: 0, s: 0, l: 0 };
+      color.getHSL(hsl);
+      hsl.h = hsl.h * 0.8 + 0.58 * 0.2;
+      hsl.s = Math.min(hsl.s + 0.05, 0.2);
+      hsl.l = Math.min(hsl.l + 0.05, 0.85);
+      color.setHSL(hsl.h, hsl.s, hsl.l);
+    } else if (ht > 20) {
+      // Mid-rise: slight lightening
+      const hsl = { h: 0, s: 0, l: 0 };
+      color.getHSL(hsl);
+      hsl.l = Math.min(hsl.l + 0.03, 0.85);
+      color.setHSL(hsl.h, hsl.s, hsl.l);
+    } else if (ht < 8) {
+      // Low buildings (houses/shops): slightly warmer/darker
+      const hsl = { h: 0, s: 0, l: 0 };
+      color.getHSL(hsl);
+      hsl.s = Math.min(hsl.s + 0.03, 0.2);
+      hsl.l = Math.max(hsl.l - 0.03, 0.35);
+      color.setHSL(hsl.h, hsl.s, hsl.l);
     }
 
     setVertexColor(geom, color);
@@ -721,8 +766,8 @@ export function buildMergedGeometry(
   // Dispose individual geometries — data is now in merged
   for (const g of geometries) g.dispose();
 
-  // Edge outlines for architectural definition (higher angle = fewer edges = better perf)
-  const edges = new THREE.EdgesGeometry(merged, 25);
+  // Edge outlines for architectural definition (lower angle = more edges = more detail)
+  const edges = new THREE.EdgesGeometry(merged, 18);
 
   return { mesh: merged, edges, count: geometries.length };
 }

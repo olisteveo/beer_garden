@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { WeatherData } from "../types";
-import { fetchWeather } from "../utils/weather";
+import { apiWeather } from "../utils/api";
 import { cacheGet, cacheSet } from "../utils/cache";
 import { WEATHER_CACHE_TTL } from "../utils/constants";
 
@@ -23,7 +23,7 @@ export function useWeather(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cache key includes rounded coordinates so weather updates on search
-  const cacheKey = `beer-garden:weather:${lat.toFixed(2)}:${lon.toFixed(2)}`;
+  const cacheKey = `pub-garden:weather:${lat.toFixed(2)}:${lon.toFixed(2)}`;
 
   useEffect(() => {
     if (!enabled) {
@@ -41,7 +41,7 @@ export function useWeather(
       }
 
       setState((prev) => ({ ...prev, loading: true }));
-      const data = await fetchWeather(lat, lon, controller.signal);
+      const data = await apiWeather(lat, lon, controller.signal);
       if (!controller.signal.aborted) {
         if (data) cacheSet(cacheKey, data);
         setState({ weather: data, loading: false });
